@@ -1,0 +1,373 @@
+*git-blame.txt*    A git blame plugin for Neovim written in Lua
+
+Author:   f-person <https://github.com/f-person>
+License:  GPLv3
+Homepage: https://github.com/f-person/git-blame.nvim
+
+==============================================================================
+CONTENTS                                                  *git-blame-contents*
+
+    1. Introduction .......................... |git-blame-introduction|
+    2. Requirements .......................... |git-blame-requirements|
+    3. Installation .......................... |git-blame-installation|
+    4. Configuration ......................... |git-blame-configuration|
+    5. Commands .............................. |git-blame-commands|
+    6. Statusline Integration ................ |git-blame-statusline|
+    7. Lua API ............................... |git-blame-api|
+    8. Timeago Languages ..................... |git-blame-timeago|
+
+==============================================================================
+1. INTRODUCTION                                       *git-blame-introduction*
+
+git-blame.nvim is a Neovim plugin that displays git blame information as
+virtual text at the end of each line, similar to the blame features found
+in modern IDEs and editors.
+
+==============================================================================
+2. REQUIREMENTS                                       *git-blame-requirements*
+
+- Neovim >= 0.5.0
+- git
+
+==============================================================================
+3. INSTALLATION                                       *git-blame-installation*
+
+Using vim-plug: >lua
+    Plug 'f-person/git-blame.nvim'
+<
+
+Using lazy.nvim: >lua
+    {
+        "f-person/git-blame.nvim",
+        event = "VeryLazy",
+        opts = {
+            enabled = true,
+        },
+    }
+<
+
+==============================================================================
+4. CONFIGURATION                                     *git-blame-configuration*
+
+You can configure the plugin using the `setup` function: >lua
+
+    require('gitblame').setup({
+        enabled = false,
+    })
+<
+
+NOTE: You don't have to call `setup` if you don't want to customize the
+default behavior.
+
+Options in the `setup` function don't have the `gitblame_` prefix.
+All options can also be set as global Vim variables with the `gitblame_`
+prefix (e.g., `vim.g.gitblame_enabled`).
+
+                                                        *git-blame-enabled*
+enabled ~
+    Type: `boolean`, Default: `true`
+
+    Enables git-blame.nvim on Neovim startup. You can toggle git blame
+    messages on/off with the |:GitBlameToggle| command.
+
+                                                *git-blame-message_template*
+message_template ~
+    Type: `string`, Default: `"  <author> • <date> • <summary>"`
+
+    The template for the blame message that will be shown.
+
+    Available placeholders:
+    - `<author>`         Author name
+    - `<committer>`      Committer name
+    - `<date>`           Author date
+    - `<committer-date>` Committer date
+    - `<summary>`        Commit summary
+    - `<sha>`            Short commit SHA (7 characters)
+
+                                                    *git-blame-date_format*
+date_format ~
+    Type: `string`, Default: `"%c"`
+
+    The format of the date fields. Uses Lua's `os.date` format strings.
+    Additionally supports `%r` for relative time (e.g., "3 days ago").
+
+    Common format options: >
+        %r  relative date (e.g., 3 days ago)
+        %a  abbreviated weekday name (e.g., Wed)
+        %A  full weekday name (e.g., Wednesday)
+        %b  abbreviated month name (e.g., Sep)
+        %B  full month name (e.g., September)
+        %c  date and time (e.g., 09/16/98 23:48:10)
+        %d  day of the month [01-31]
+        %H  hour, 24-hour clock [00-23]
+        %I  hour, 12-hour clock [01-12]
+        %M  minute [00-59]
+        %m  month [01-12]
+        %p  "am" or "pm"
+        %S  second [00-61]
+        %Y  full year (1998)
+        %y  two-digit year [00-99]
+<
+
+                                        *git-blame-message_when_not_committed*
+message_when_not_committed ~
+    Type: `string`, Default: `"  Not Committed Yet"`
+
+    The blame message shown when the current modification hasn't been
+    committed yet. Supports the same template options as
+    |git-blame-message_template|.
+
+                                                *git-blame-highlight_group*
+highlight_group ~
+    Type: `string`, Default: `"Comment"`
+
+    The highlight group for virtual text.
+
+                                            *git-blame-set_extmark_options*
+set_extmark_options ~
+    Type: `table`, Default: `{}`
+
+    Additional options passed to `nvim_buf_set_extmark`. See
+    |nvim_buf_set_extmark()| for available options.
+
+    WARNING: Overwriting `id` and `virt_text` will break the plugin.
+
+                                            *git-blame-display_virtual_text*
+display_virtual_text ~
+    Type: `boolean`, Default: `true`
+
+    Whether to display the blame message as virtual text. You may want
+    to disable this if you display the blame message in the statusline.
+
+                                              *git-blame-ignored_filetypes*
+ignored_filetypes ~
+    Type: `string[]`, Default: `{}`
+
+    A list of filetypes for which git blame information will not be
+    displayed.
+
+                                                         *git-blame-delay*
+delay ~
+    Type: `number`, Default: `250`
+
+    The delay in milliseconds before the blame info is displayed.
+    Note that this doesn't affect plugin performance.
+
+                                            *git-blame-virtual_text_column*
+virtual_text_column ~
+    Type: `number|nil`, Default: `nil`
+
+    Have the blame message start at a given column instead of EOL.
+    If the current line is longer than the specified column value,
+    the blame message will default to being displayed at EOL.
+
+                                                *git-blame-schedule_event*
+schedule_event ~
+    Type: `string`, Default: `"CursorMoved"`
+
+    The autocmd event used for scheduling blame display.
+    Options: `"CursorMoved"` or `"CursorHold"`.
+
+    Use `"CursorHold"` for better performance in large projects.
+
+                                                    *git-blame-clear_event*
+clear_event ~
+    Type: `string`, Default: `"CursorMovedI"`
+
+    The autocmd event used for clearing virtual text.
+    Options: `"CursorMovedI"` or `"CursorHoldI"`.
+
+                                        *git-blame-use_blame_commit_file_urls*
+use_blame_commit_file_urls ~
+    Type: `boolean`, Default: `false`
+
+    When `true`, |:GitBlameOpenFileURL| and |:GitBlameCopyFileURL| will
+    open the file at the latest blame commit instead of the latest branch
+    commit.
+
+                                            *git-blame-clipboard_register*
+clipboard_register ~
+    Type: `string`, Default: `"+"`
+
+    The clipboard register used by copy commands
+    (|:GitBlameCopySHA|, |:GitBlameCopyFileURL|, |:GitBlameCopyCommitURL|).
+
+                                        *git-blame-max_commit_summary_length*
+max_commit_summary_length ~
+    Type: `number`, Default: `0`
+
+    Maximum length of the commit summary in the blame message.
+    `0` means no limit. Longer summaries will be truncated with `...`.
+
+                                                *git-blame-remote_domains*
+remote_domains ~
+    Type: `table<string, string>`, Default: see below
+
+    A map of domain names to forge software for URL generation.
+    Default includes mappings for sourcehut, Azure DevOps, Bitbucket,
+    and Codeberg (Forgejo).
+
+    Supported forge values: `"github"`, `"gitlab"`, `"sourcehut"`,
+    `"forgejo"`, `"azure"`, `"bitbucket"`.
+
+    Example: >lua
+        vim.g.gitblame_remote_domains = {
+            ["git.sr.ht"] = "sourcehut",
+        }
+<
+
+                                                  *git-blame-remote_name*
+remote_name ~
+    Type: `string`, Default: `"origin"`
+    (set via `vim.g.gitblame_remote_name`)
+
+    The git remote name to use for URL generation. Useful when working
+    with multiple remotes or forks.
+
+==============================================================================
+5. COMMANDS                                               *git-blame-commands*
+
+                                                         *:GitBlameToggle*
+:GitBlameToggle
+    Toggle git blame messages on/off.
+
+                                                         *:GitBlameEnable*
+:GitBlameEnable
+    Enable git blame messages.
+
+                                                        *:GitBlameDisable*
+:GitBlameDisable
+    Disable git blame messages.
+
+                                                    *:GitBlameOpenCommitURL*
+:GitBlameOpenCommitURL
+    Open the commit URL of the commit under the cursor in the default
+    browser. Works with GitHub, GitLab, and other supported forges.
+
+                                                     *:GitBlameOpenFileURL*
+:[range]GitBlameOpenFileURL
+    Open the current file in the default browser. The URL is scoped to
+    the latest commit on the current branch with a mark at the current
+    line. Supports visual range selection.
+
+                                                        *:GitBlameCopySHA*
+:GitBlameCopySHA
+    Copy the SHA hash of the current line's commit to the clipboard.
+
+                                                   *:GitBlameCopyCommitURL*
+:GitBlameCopyCommitURL
+    Copy the commit URL of the current line's commit to the clipboard.
+
+                                                    *:GitBlameCopyFileURL*
+:[range]GitBlameCopyFileURL
+    Copy the file URL to the clipboard. Supports visual range selection.
+
+                                                      *:GitBlameCopyPRURL*
+:GitBlameCopyPRURL
+    Copy the pull request URL associated with the commit on the current
+    line to the clipboard. Requires the GitHub CLI (`gh`) to be installed
+    and authenticated.
+
+==============================================================================
+6. STATUSLINE INTEGRATION                             *git-blame-statusline*
+
+The plugin provides functions for statusline integration: >lua
+
+    local git_blame = require('gitblame')
+
+    -- Returns true if blame text is available
+    git_blame.is_blame_text_available()
+
+    -- Returns the current blame message string
+    git_blame.get_current_blame_text()
+<
+
+Example with lualine.nvim: >lua
+
+    vim.g.gitblame_display_virtual_text = 0
+    local git_blame = require('gitblame')
+
+    require('lualine').setup({
+        sections = {
+            lualine_c = {
+                {
+                    git_blame.get_current_blame_text,
+                    cond = git_blame.is_blame_text_available,
+                },
+            },
+        },
+    })
+<
+
+==============================================================================
+7. LUA API                                                   *git-blame-api*
+
+gitblame.setup({opts})                                    *gitblame.setup()*
+    Configure and initialize the plugin. See |git-blame-configuration|
+    for available options.
+
+    Parameters: ~
+        {opts}  (table|nil) Configuration options
+
+gitblame.enable()                                        *gitblame.enable()*
+    Enable git blame messages and set up autocommands.
+
+gitblame.disable()                                      *gitblame.disable()*
+    Disable git blame messages, clear virtual text, and remove
+    autocommands.
+
+gitblame.toggle()                                        *gitblame.toggle()*
+    Toggle git blame messages on or off.
+
+gitblame.get_current_blame_text()            *gitblame.get_current_blame_text()*
+    Returns the current blame text string.
+
+    Return: ~
+        `string` The blame message for the current line
+
+gitblame.is_blame_text_available()          *gitblame.is_blame_text_available()*
+    Returns whether blame text is currently available.
+
+    Return: ~
+        `boolean`
+
+gitblame.open_commit_url()                      *gitblame.open_commit_url()*
+    Open the commit URL for the current line in the default browser.
+
+gitblame.open_file_url({args})                   *gitblame.open_file_url()*
+    Open the file URL in the default browser.
+
+    Parameters: ~
+        {args}  (table) Command args with `line1` and `line2` fields
+
+gitblame.copy_sha_to_clipboard()          *gitblame.copy_sha_to_clipboard()*
+    Copy the commit SHA for the current line to the clipboard.
+
+gitblame.copy_commit_url_to_clipboard()
+                                    *gitblame.copy_commit_url_to_clipboard()*
+    Copy the commit URL for the current line to the clipboard.
+
+gitblame.copy_file_url_to_clipboard({args})
+                                     *gitblame.copy_file_url_to_clipboard()*
+    Copy the file URL to the clipboard.
+
+    Parameters: ~
+        {args}  (table) Command args with `line1` and `line2` fields
+
+gitblame.copy_pr_url_to_clipboard()
+                                       *gitblame.copy_pr_url_to_clipboard()*
+    Copy the associated PR URL to the clipboard. Requires GitHub CLI.
+
+==============================================================================
+8. TIMEAGO LANGUAGES                                     *git-blame-timeago*
+
+The plugin uses lua-timeago for displaying commit dates in a relative time
+format. To set a language: >lua
+
+    require('lua-timeago').set_language(require('lua-timeago/languages/hy'))
+<
+
+See the `lua/lua-timeago/languages/` directory for available languages.
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:

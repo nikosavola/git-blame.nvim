@@ -1,18 +1,15 @@
 local M = {}
 
-function __FILE__()
-    return debug.getinfo(3, "S").source
-end
-
-function __LINE__()
+local function __LINE__()
     return debug.getinfo(3, "l").currentline
 end
 
-function __FUNC__()
+local function __FUNC__()
     return debug.getinfo(3, "n").name
 end
 
 ---@param o any
+---@return string
 local function dump(o)
     if type(o) == "table" then
         local s = "{ "
@@ -28,6 +25,8 @@ local function dump(o)
     end
 end
 
+---Log a debug message with caller information.
+---@param text any
 function M.log(text)
     print(string.format("[%s][%s-%s] %s", os.clock(), __FUNC__(), __LINE__(), dump(text)))
 end
@@ -82,12 +81,15 @@ function M.get_line_number()
     return vim.api.nvim_win_get_cursor(0)[1]
 end
 
---@return number of tabs and tabstop in string
+---@param s string
+---@return number tab_count
+---@return number tabstop
 function M.get_tabs_len_in_string(s)
     local _, tab_count = s:gsub("\t", "")
-    return tab_count, vim.api.nvim_buf_get_option(0, "tabstop")
+    return tab_count, vim.bo.tabstop
 end
 
+---@return number
 function M.get_line_length()
     local cur_line = vim.api.nvim_get_current_line()
     local tc, ts = M.get_tabs_len_in_string(cur_line)
@@ -119,16 +121,16 @@ function M.launch_url(url)
 
     if not open_cmd then
         if package.config:sub(1, 1) == "\\" then
-            open_cmd = function(_url)
-                M.start_job(string.format('rundll32 url.dll,FileProtocolHandler "%s"', _url))
+            open_cmd = function(target_url)
+                M.start_job(string.format('rundll32 url.dll,FileProtocolHandler "%s"', target_url))
             end
         elseif (io.popen("uname -s"):read("*a")):match("Darwin") then
-            open_cmd = function(_url)
-                M.start_job(string.format('open "%s"', _url))
+            open_cmd = function(target_url)
+                M.start_job(string.format('open "%s"', target_url))
             end
         else
-            open_cmd = function(_url)
-                M.start_job(string.format('xdg-open "%s"', _url))
+            open_cmd = function(target_url)
+                M.start_job(string.format('xdg-open "%s"', target_url))
             end
         end
     end

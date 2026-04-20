@@ -156,12 +156,12 @@ local function load_blames(callback)
         return
     end
 
-    local buftype = vim.api.nvim_buf_get_option(0, "bt")
+    local buftype = vim.bo.buftype
     if buftype ~= "" then
         return
     end
 
-    local filetype = vim.api.nvim_buf_get_option(0, "ft")
+    local filetype = vim.bo.filetype
     if vim.tbl_contains(vim.g.gitblame_ignored_filetypes, filetype) then
         return
     end
@@ -654,7 +654,7 @@ M.copy_pr_url_to_clipboard = function()
                     if code ~= 0 then
                         utils.log("Failed to find PR (is gh CLI installed?)")
                     end
-                end
+                end,
             })
         else
             utils.log("Unable to get commit SHA")
@@ -809,14 +809,14 @@ end
 ---@field date_format string?
 ---@field message_when_not_committed string?
 ---@field highlight_group string?
----@field gitblame_set_extmark_options table? @see vim.api.nvim_buf_set_extmark() to check what you can pass here
+---@field gitblame_set_extmark_options table? @see nvim_buf_set_extmark()
 ---@field display_virtual_text boolean?
 ---@field ignored_filetypes string[]?
 ---@field delay number? Visual delay for displaying virtual text
----@field use_blame_commit_file_urls boolean? Use the latest blame commit instead of the latest branch commit for file urls.
----@field virtual_text_column number? The column on which to start displaying virtual text
----@field clipboard_register string? The clipboard register to use when copying commit SHAs or file URLs
----@field max_commit_summary_length number? The maximum allowable length for the displayed commit summary. Defaults to 0 (no limit)
+---@field use_blame_commit_file_urls boolean? Use blame commit for file urls
+---@field virtual_text_column number? Column to start displaying virtual text
+---@field clipboard_register string? Register for copying SHAs or file URLs
+---@field max_commit_summary_length number? Max commit summary length (0=no limit)
 
 ---@param opts SetupOptions?
 M.setup = function(opts)

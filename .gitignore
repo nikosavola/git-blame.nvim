@@ -1,1 +1,20 @@
+# macOS
 .DS_Store
+
+# Neovim
+doc/tags
+
+# Lua
+*.luac
+luac.out
+
+# Testing
+luacov.stats.out
+luacov.report.out
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

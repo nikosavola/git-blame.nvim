@@ -21,13 +21,13 @@ M.default_opts = {
         ["git.sr.ht"] = "sourcehut",
         ["dev.azure.com"] = "azure",
         ["bitbucket.org"] = "bitbucket",
-        ["codeberg.org"] = "forgejo"
-    }
+        ["codeberg.org"] = "forgejo",
+    },
 }
 
 ---@param opts SetupOptions?
 M.setup = function(opts)
-    local opts = opts or {}
+    opts = opts or {}
 
     local global_var_opts = {}
     for k, _ in pairs(M.default_opts) do

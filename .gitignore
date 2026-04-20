@@ -11,6 +11,7 @@ luac.out
 # Testing
 luacov.stats.out
 luacov.report.out
+deps/
 
 # IDEs
 .idea/
